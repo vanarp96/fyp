@@ -1,0 +1,27 @@
+[general]
+mode = text
+
+[client]
+address = 127.0.0.1
+port = 4000
+
+[server]
+address = 192.168.1.11
+
+[destination]
+address = 127.0.0.1
+port = 9000
+
+[audio]
+format = paInt16
+channels = 1
+rate = 44100
+frames_per_buffer = 1024
+
+[crypto]
+algorithm = AES
+block_mode = CBC
+block_size = 16
+key_size = 32
+init_vector = \xec\xa9.\x1d\x11\xab\xbc\xe8^\xaf\x82\x98!4\xc6\x04
+key = XH\xd1\rpPz\xc0\xae\xa7\xab\x1c70\x01\xcd\x95\xa8Ef\xb5n\xe1\xbb\xce\xbd\xb6eQ--\xf9
