@@ -4,13 +4,14 @@ import Crypto.Cipher.AES as AES
 import Crypto.Random.OSRNG as OSRNG
 
 
-# use AES 256 by default
+# uses AES256 by default
 class Cry:
-    def __init__(self, block_size=16, key_size=32):
+    def __init__(self, key, init_vector, block_size=16, key_size=32):
         self.block_size = block_size
         self.key_size = key_size
-        self.init_vector = self.gen_init_vector(block_size)
-        self.key = self.gen_key(32)
+        self.init_vector = init_vector      #self.gen_init_vector(block_size)
+        self.key = key      #self.gen_key(key_size)
+        self.aes = AES.new(self.key, AES.MODE_CBC, self.init_vector)
 
     def pad(self, data):
         if len(data) % self.block_size == 0:
@@ -29,17 +30,21 @@ class Cry:
             return data
 
     def encrypt(self, data):
-        aes = AES.new(self.key, AES.MODE_CBC, self.init_vector)
-        return aes.encrypt(self.pad(data))
+        return self.aes.encrypt(self.pad(data))
 
     def decrypt(self, data):
-        aes = AES.new(self.key, AES.MODE_CBC, self.init_vector)
-        return self.unpad(aes.decrypt(data))
+        return self.unpad(self.aes.decrypt(data))
 
-    @staticmethod
-    def gen_init_vector(block_size=16):
+
+def gen_init_vector(block_size=16):
+    try:
         return OSRNG.posix.new().read(block_size)
+    except:
+        return OSRNG.new().read(block_size)
 
-    @staticmethod
-    def gen_key(key_size=32):
+
+def gen_key(key_size=32):
+    try:
         return OSRNG.posix.new().read(key_size)
+    except:
+        return OSRNG.new().read(key_size)

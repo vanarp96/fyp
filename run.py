@@ -1,19 +1,20 @@
+#!/usr/bin/env python
 __author__ = 'INSPIRON14R'
 
 import sys
-import socket
-import threading
+# import socket
+# import threading
 import pickle
 import select
 import struct
 import logging
 import getopt
-import Queue
+# import Queue
 import SocketServer
-import ConfigParser
 from datetime import datetime
 from bidict import bidict
 from comm import *
+from config import *
 from cry import *
 
 global udpservers, udpserverslock, client, localaddress, serveraddress, port, remotefwdto, udpports, tcpconnections, \
@@ -21,91 +22,29 @@ global udpservers, udpserverslock, client, localaddress, serveraddress, port, re
 
 udpserverslock = threading.Lock()
 
-v_queue = Queue.Queue(10)
-v_queue_lock = threading.Lock()
-
-t_queue = Queue.Queue(10)
-t_queue_lock = threading.Lock()
-
 udpservers = dict()
 tcpconnections = dict()
 tcpconnsock2key = dict()
 udpportnat = bidict()
 
-########################################################################################################################
-# Handler functions for text chat
-def get_message():
-    """Fetch a text mesage"""
-    t_queue_lock.acquire()
-    d1 = t_queue.get()
-    t_queue_lock.release()
-    return d1
-
-
-def send_message(msg):
-    """Send a text mesage"""
-    t_queue_lock.acquire()
-    t_queue.put(msg)
-    t_queue_lock.release()
-
-
-########################################################################################################################
-# Configuration reader
-
-class Config:
-    def __init__(self):
-        configfile = 'config.txt'
-        self.cp = ConfigParser.ConfigParser()
-        self.cp.read(configfile)
-
-    def readall(self):
-        cfg = dict()
-
-        a = self.cp.get('general', 'mode')
-        if a == 'text':
-            cfg['text'] = True
-            cfg['voice'] = not cfg['text']
-        elif a == 'voice':
-            cfg['text'] = False
-            cfg['voice'] = not cfg['text']
-
-        cfg['localaddress'] = self.cp.get('client', 'address')
-        cfg['serveraddress'] = self.cp.get('server', 'address')
-        cfg['port'] = self.cp.getint('client', 'port')
-        cfg['remotefwdto'] = self.cp.get('destination', 'address')
-        cfg['udpports'] = [self.cp.getint('destination', 'port')]
-
-        cfg['key'] = self.cp.get('crypto', 'key')
-        cfg['init_vector'] = self.cp.get('crypto', 'init_vector')
-
-        cfg['channels'] = self.cp.getint('audio', 'channels')
-        cfg['rate'] = self.cp.getint('audio', 'rate')
-        cfg['frames_per_buffer'] = self.cp.getint('audio', 'frames_per_buffer')
-
-        return cfg
-
-    def read(self, section, item):
-        """returns a str object!!!"""
-        return self.cp.get(section, item)
-
-    def save(self, section, item):
-        self.cp.set(section, item)
-
 
 def usage():
-    print sys.argv[0], '[ch]'
-    print '    By default, runs as server'
-    print '-c  Run as client'
-    print '-h  Display this message & exit'
-    print ''
+    print sys.argv[0], '[OPTION]...'
+    print 'Runs as server when no arguments are given'
+    print '-c, --client  run as client'
+    print '-h, --help    display this help & exit'
     sys.exit(1)
-
 
 console_lock = threading.Lock()
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
+config_reader = Config()
+config_dict = config_reader.readall()
+creeper = Cry(config_dict['key'], config_dict['init_vector'])
 
 
 def log(*args):
+    if not config_dict['logging']:
+        return
     with console_lock:
         logging.info(''.join([str(x) for x in args]))
 
@@ -177,10 +116,12 @@ class ThreadedUDPHandler(SocketServer.BaseRequestHandler):
             rport = udpportnat[rport:]
             dst[1] = rport
 
-        s = pickle.dumps((tuple(src), tuple(dst), self.request[0],), pickle.HIGHEST_PROTOCOL)
+        # payload to be sent is in 'self.request[0]'
+        s = pickle.dumps((tuple(src), tuple(dst), creeper.encrypt(self.request[0]),), pickle.HIGHEST_PROTOCOL)
+        # s = pickle.dumps((tuple(src), tuple(dst), self.request[0],), pickle.HIGHEST_PROTOCOL)
 
         if getattr(self.server, 'clientmode', False):
-            tcpc = None
+            # tcpc = None
             key = tuple(map(None, src, (dst[1],)))
 
             if not tcpconnections.has_key(key):
@@ -217,9 +158,10 @@ def read_tcp(tcp_socket, tcp_socket_lock, bf, sendingto, srvcallback=None, sendp
             msglen = struct.unpack('!I', bf[:4])[0]
             if len(bf) >= msglen + 4:
                 (msglen, msg) = struct.unpack("!I%ds" % msglen, bf[:msglen + 4])
-                bf = bf[struct.calcsize("!I%ds" % msglen):]
-
+                # bf = bf[struct.calcsize("!I%ds" % msglen):]
                 (client_address, server_address, udp) = pickle.loads(msg)
+                udp = creeper.decrypt(udp)
+
                 log("(TCP) received UDP from ", client_address, " addressed to ", server_address)
 
                 if srvcallback is not None:
@@ -263,8 +205,8 @@ class ThreadedTCPHandler(SocketServer.BaseRequestHandler):
                 else:
                     return None
 
-        fwdto = None
-        fa = None
+        # fwdto = None
+        # fa = None
         udps = []
 
         nb = ''
@@ -276,7 +218,7 @@ class ThreadedTCPHandler(SocketServer.BaseRequestHandler):
         src, nm = [x.lstrip().rstrip() for x in nb[:128].split('\n')]
         sendingto = "127.0.0.1"
         log("(TCP) started server forwarding to ", nm, " as ", sendingto, " for other source ", src)
-        nb = nm[128:]
+        # nb = nm[128:]
 
         bf = ''
         try:
@@ -317,23 +259,23 @@ if __name__ == '__main__':
         else:
             assert False, "unhandled option"
 
-    config_reader = Config()
-    config_dict = config_reader.readall()
-
-    localaddress = config_dict['localaddress']
-    serveraddress = config_dict['serveraddress']
-    remotefwdto = config_dict['remotefwdto']
+    localaddress = config_dict['clientaddr']
+    serveraddress = config_dict['serveraddr']
+    remotefwdto = config_dict['destaddr']
     firstport = None
-    port = config_dict['port']
-    udpports = config_dict['udpports']
+    port = config_dict['destport']
+    udpports = config_dict['clientport']
 
     if client:
         log("Running as client")
-        if config_dict['text']:
+        if config_dict['mode'] == 1:
             th = Text(True, config_dict)
             th.start()
-        else:
+        elif config_dict['mode'] == 2:
             th = Voice(True, config_dict)
+            th.start()
+        else:
+            th = FileAudio(True, config_dict)
             th.start()
 
         for rport in udpports:
@@ -369,14 +311,15 @@ if __name__ == '__main__':
                     del o
 
     else:
-        if config_dict['text']:
+        if config_dict['mode'] == 0:
+            th = FileAudio(False, config_dict)
+        elif config_dict['mode'] == 1:
             th = Text(False, config_dict)
-            th.start()
-        else:
+        elif config_dict['mode'] == 2:
             th = Voice(False, config_dict)
-            th.start()
+
+        th.start()
 
         log("Running as server")
         server = ThreadedTCPServer(('', port), ThreadedTCPHandler)
         server.serve_forever()
-        sys.exit(0)

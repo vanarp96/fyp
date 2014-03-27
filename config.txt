@@ -1,12 +1,13 @@
 [general]
 mode = text
+logging = yes
 
 [client]
 address = 127.0.0.1
 port = 4000
 
 [server]
-address = 192.168.1.11
+address = 172.16.1.96
 
 [destination]
 address = 127.0.0.1
@@ -24,4 +25,4 @@ block_mode = CBC
 block_size = 16
 key_size = 32
 init_vector = \xec\xa9.\x1d\x11\xab\xbc\xe8^\xaf\x82\x98!4\xc6\x04
-key = XH\xd1\rpPz\xc0\xae\xa7\xab\x1c70\x01\xcd\x95\xa8Ef\xb5n\xe1\xbb\xce\xbd\xb6eQ--\xf9
+key = \x85y\x8f,\x0fD\x8e\xcb\x8dW\x05\x9f\xf2^f\xb0D\xfb\x97\x12\xa9h\xad\xbfo\xf2y\xc2\xe3\xf5\xdaJ
