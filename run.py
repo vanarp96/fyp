@@ -16,6 +16,7 @@ from bidict import bidict
 from comm import *
 from config import *
 from cry import *
+from gui import *
 
 global udpservers, udpserverslock, client, localaddress, serveraddress, port, remotefwdto, udpports, tcpconnections, \
     tcpconnsock2key, udpportnat
@@ -33,7 +34,7 @@ def usage():
     print 'Runs as server when no arguments are given'
     print '-c, --client  run as client'
     print '-h, --help    display this help & exit'
-    sys.exit(1)
+    sys.exit()
 
 console_lock = threading.Lock()
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
@@ -247,7 +248,7 @@ if __name__ == '__main__':
         opts, args = getopt.getopt(sys.argv[1:], "hcs", ["help", "client"])
     except getopt.GetoptError, err:
         print str(err)
-        sys.exit(2)
+        sys.exit()
 
     client = False
     for o, a in opts:
@@ -255,7 +256,7 @@ if __name__ == '__main__':
             client = True
         elif o in ('-h', '--help'):
             usage()
-            sys.exit(0)
+            sys.exit()
         else:
             assert False, "unhandled option"
 
@@ -277,6 +278,8 @@ if __name__ == '__main__':
         else:
             th = FileAudio(True, config_dict)
             th.start()
+        g = GUI(th)
+        g.start()
 
         for rport in udpports:
             with udpserverslock:
@@ -317,7 +320,9 @@ if __name__ == '__main__':
             th = Text(False, config_dict)
         elif config_dict['mode'] == 2:
             th = Voice(False, config_dict)
-
+        else:
+            log('config file error')
+            sys.exit()
         th.start()
 
         log("Running as server")

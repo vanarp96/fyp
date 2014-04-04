@@ -5,9 +5,9 @@ import ConfigParser
 
 class Config:
     def __init__(self):
-        configfile = 'config.txt'
+        self.configfile = 'config.txt'
         self.cp = ConfigParser.ConfigParser()
-        self.cp.read(configfile)
+        self.cp.read(self.configfile)
 
     def readall(self):
         cfg = dict()
@@ -44,5 +44,6 @@ class Config:
     def read(self, section, item):
         return self.cp.get(section, item)
 
-    def save(self, section, item):
-        self.cp.set(section, item)
+    def save(self, section, item, value):
+        self.cp.set(section, item, value)
+        self.cp.write(open(self.configfile, 'w'))

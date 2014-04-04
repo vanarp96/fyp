@@ -12,12 +12,16 @@ class Text(threading.Thread):
     def __init__(self, client_mode, param):
         threading.Thread.__init__(self)
 
-        self.daemon = True
-        self.client_mode = client_mode
         self.queue_lock = threading.Lock()
         self.queue_msg = Queue.Queue(64)
+
+        self.daemon = True
+        self.client_mode = client_mode
+
         self.addr = param['clientaddr']
         self.port = param['clientport'][0]
+
+        self.msg = ''
 
         if client_mode:
             self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -28,26 +32,34 @@ class Text(threading.Thread):
     def run(self):
         if self.client_mode:
             while True:
-                msg = raw_input('>>> ')
-                self.s.sendto(msg, (self.addr, self.port))
+                # msg = raw_input('>>> ')
+                if self.msg != '':
+                    self.s.sendto(self.msg, (self.addr, self.port))
+                    self.msg = ''
         else:
             while True:
                 dat, addr = self.s.recvfrom(1024)
-                print '>>> ', addr, ':', dat
+                # print '>>> ', addr, ':', dat
+                with self.queue_lock:
+                    self.queue_msg.put(dat)
 
     def get_message(self):
-        """Fetch a text mesage"""
-        self.queue_lock.acquire()
-        d1 = self.queue_msg.get()
-        self.queue_lock.release()
-        return d1
+        """ Fetch a mesage from the queue
+            if queue is empty, returns NoneType
+            else returns str
+        """
+        with self.queue_lock:
+            if not self.queue_msg.empty():
+                d1 = self.queue_msg.get()
+                return d1
+            else:
+                return None
 
     def put_message(self, msg):
-        "put a text string in the queue"
-        self.queue_lock.acquire()
-        self.queue_msg.put(msg)
-        self.queue_lock.release()
-
+        """ Sends a message
+            takes a str as argument
+        """
+        self.msg = msg
 
 class Voice(threading.Thread):
     def __init__(self, client_mode, param):
