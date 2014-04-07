@@ -118,8 +118,11 @@ class ThreadedUDPHandler(SocketServer.BaseRequestHandler):
             dst[1] = rport
 
         # payload to be sent is in 'self.request[0]'
-        s = pickle.dumps((tuple(src), tuple(dst), creeper.encrypt(self.request[0]),), pickle.HIGHEST_PROTOCOL)
-        # s = pickle.dumps((tuple(src), tuple(dst), self.request[0],), pickle.HIGHEST_PROTOCOL)
+        if config_dict['encryption']:
+            print 'encrypt'
+            s = pickle.dumps((tuple(src), tuple(dst), creeper.encrypt(self.request[0]),), pickle.HIGHEST_PROTOCOL)
+        else:
+            s = pickle.dumps((tuple(src), tuple(dst), self.request[0],), pickle.HIGHEST_PROTOCOL)
 
         if getattr(self.server, 'clientmode', False):
             # tcpc = None
@@ -161,7 +164,8 @@ def read_tcp(tcp_socket, tcp_socket_lock, bf, sendingto, srvcallback=None, sendp
                 (msglen, msg) = struct.unpack("!I%ds" % msglen, bf[:msglen + 4])
                 # bf = bf[struct.calcsize("!I%ds" % msglen):]
                 (client_address, server_address, udp) = pickle.loads(msg)
-                udp = creeper.decrypt(udp)
+                if config_dict['encryption']:
+                    udp = creeper.decrypt(udp)
 
                 log("(TCP) received UDP from ", client_address, " addressed to ", server_address)
 
@@ -278,8 +282,15 @@ if __name__ == '__main__':
         else:
             th = FileAudio(True, config_dict)
             th.start()
-        g = GUI(th)
-        g.start()
+            
+        if config_dict['do_kand']:
+            print 'doing kand'
+            kand = Kand(True, config_dict)
+            kand.start()
+            
+        if config_dict['gui']:
+            g = GUI(th, kand)
+            g.start()
 
         for rport in udpports:
             with udpserverslock:
@@ -314,6 +325,10 @@ if __name__ == '__main__':
                     del o
 
     else:
+        if config_dict['do_kand']:
+            #print 'doing kand'
+            kand = Kand(False, config_dict)
+            kand.start()
         if config_dict['mode'] == 0:
             th = FileAudio(False, config_dict)
         elif config_dict['mode'] == 1:
@@ -324,6 +339,10 @@ if __name__ == '__main__':
             log('config file error')
             sys.exit()
         th.start()
+        
+        if config_dict['gui']:
+            g = GUI(th, kand)
+            g.start()
 
         log("Running as server")
         server = ThreadedTCPServer(('', port), ThreadedTCPHandler)

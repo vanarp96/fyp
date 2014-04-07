@@ -23,6 +23,7 @@ class Config:
             cfg['mode'] = 1
         elif a == 'voice':
             cfg['mode'] = 2
+        cfg['gui'] = self.cp.getboolean('gui', 'enabled')
 
         cfg['clientaddr'] = self.cp.get('client', 'address')
         cfg['serveraddr'] = self.cp.get('server', 'address')
@@ -32,12 +33,17 @@ class Config:
 
         cfg['key'] = self.cp.get('crypto', 'key').decode('string_escape')
         cfg['init_vector'] = self.cp.get('crypto', 'init_vector').decode('string_escape')
+        cfg['encryption'] = self.cp.getboolean('crypto', 'enabled')
+        
+        cfg['do_kand'] = self.cp.getboolean('kand', 'do_kand')
+        cfg['kand_port'] = self.cp.getint('kand', 'port')
         # print 'key =', cfg['key'].encode('string_escape')
         # print 'init_vector =', cfg['key'].encode('string_escape')
 
         cfg['channels'] = self.cp.getint('audio', 'channels')
         cfg['rate'] = self.cp.getint('audio', 'rate')
         cfg['frames_per_buffer'] = self.cp.getint('audio', 'frames_per_buffer')
+        cfg['delay'] = float(self.cp.get('general', 'delay'))
 
         return cfg
 
