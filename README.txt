@@ -48,5 +48,5 @@ Configuration:
 Authors:
     - Sameer Jain
     - Saeesh Kakodkar
-    - Viren Nadkarni
-    - Pranav Prem
+    - Viren Nadkarni (@viren-nadkarni)
+    - Pranav Prem (@vanarp96)
